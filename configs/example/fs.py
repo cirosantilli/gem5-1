@@ -395,5 +395,6 @@ if buildEnv['TARGET_ISA'] == "arm" and options.generate_dtb:
             sys = getattr(root, sysname)
             sys.dtb_filename = create_dtb_for_system(sys, '%s.dtb' % sysname)
 
+root.system.realview.gic.gem5_extensions = True
 Simulation.setWorkCountOptions(test_sys, options)
 Simulation.run(options, root, test_sys, FutureClass)
