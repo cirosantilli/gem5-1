@@ -99,15 +99,7 @@ NAMESPACE_END(detail)
 
     .. _Python documentation: https://docs.python.org/3/c-api/init.html#c.Py_InitializeEx
  \endrst */
-inline void initialize_interpreter(bool init_signal_handlers = true) {
-    if (Py_IsInitialized())
-        pybind11_fail("The interpreter is already running");
-
-    Py_InitializeEx(init_signal_handlers ? 1 : 0);
-
-    // Make .py files in the working directory available by default
-    module::import("sys").attr("path").cast<list>().append(".");
-}
+void initialize_interpreter(bool init_signal_handlers = true);
 
 /** \rst
     Shut down the Python interpreter. No pybind11 or CPython API functions can be called
@@ -144,25 +136,7 @@ inline void initialize_interpreter(bool init_signal_handlers = true) {
         freed, either due to reference cycles or user-created global data.
 
  \endrst */
-inline void finalize_interpreter() {
-    handle builtins(PyEval_GetBuiltins());
-    const char *id = PYBIND11_INTERNALS_ID;
-
-    // Get the internals pointer (without creating it if it doesn't exist).  It's possible for the
-    // internals to be created during Py_Finalize() (e.g. if a py::capsule calls `get_internals()`
-    // during destruction), so we get the pointer-pointer here and check it after Py_Finalize().
-    detail::internals **internals_ptr_ptr = detail::get_internals_pp();
-    // It could also be stashed in builtins, so look there too:
-    if (builtins.contains(id) && isinstance<capsule>(builtins[id]))
-        internals_ptr_ptr = capsule(builtins[id]);
-
-    Py_Finalize();
-
-    if (internals_ptr_ptr) {
-        delete *internals_ptr_ptr;
-        *internals_ptr_ptr = nullptr;
-    }
-}
+void finalize_interpreter();
 
 /** \rst
     Scope guard version of `initialize_interpreter` and `finalize_interpreter`.
@@ -179,19 +153,14 @@ inline void finalize_interpreter() {
  \endrst */
 class scoped_interpreter {
 public:
-    scoped_interpreter(bool init_signal_handlers = true) {
-        initialize_interpreter(init_signal_handlers);
-    }
+    scoped_interpreter(bool init_signal_handlers = true);
 
     scoped_interpreter(const scoped_interpreter &) = delete;
-    scoped_interpreter(scoped_interpreter &&other) noexcept { other.is_valid = false; }
+    scoped_interpreter(scoped_interpreter &&other) noexcept;
     scoped_interpreter &operator=(const scoped_interpreter &) = delete;
     scoped_interpreter &operator=(scoped_interpreter &&) = delete;
 
-    ~scoped_interpreter() {
-        if (is_valid)
-            finalize_interpreter();
-    }
+    ~scoped_interpreter();
 
 private:
     bool is_valid = true;

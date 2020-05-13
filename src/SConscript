@@ -60,6 +60,12 @@ from gem5_scons import Transform, warning, error
 
 Import('*')
 
+pybind11objs = []
+for path, dirnames, filenames in os.walk(Dir('#/ext/pybind11/include/pybind11').get_abspath()):
+    for filename in filenames:
+        if os.path.splitext(filename)[1] == '.cpp':
+            pybind11objs.append(base_py_env.Object(os.path.join(path, filename)))
+
 # Children need to see the environment
 Export('env')
 
@@ -454,6 +460,7 @@ class Executable(object):
     def declare(self, env, objs=None):
         if objs is None:
             objs = self.srcs_to_objs(env, self.sources)
+        objs.extend(pybind11objs)
 
         env = env.Clone()
         env['BIN_RPATH_PREFIX'] = os.path.relpath(
@@ -1140,7 +1147,7 @@ env.AlwaysBuild(tags)
 # Build a small helper that marshals the Python code using the same
 # version of Python as gem5. This is in an unorthodox location to
 # avoid building it for every variant.
-py_marshal = base_py_env.Program('marshal', 'python/marshal.cc')[0]
+py_marshal = base_py_env.Program('marshal', ['python/marshal.cc'] + pybind11objs)[0]
 
 # Embed python files.  All .py files that have been indicated by a
 # PySource() call in a SConscript need to be embedded into the M5
